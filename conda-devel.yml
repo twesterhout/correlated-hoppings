@@ -1,0 +1,11 @@
+name: correlated_hoppings
+channels:
+  - weinbe58
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - quspin=0.3.6
+  - omp
+  - numpy
+  - scipy
