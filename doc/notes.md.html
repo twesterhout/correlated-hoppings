@@ -51,9 +51,9 @@ $\beta'_{ij}$ term
       + c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow} n_{j\downarrow}
   \end{equation}
 
-* $\_\_ \leftarrow \uparrow\_$:
+* $\_\_ \leftarrow \_\downarrow$:
   \begin{equation}
-    c^\dagger_{i\downarrow} c_{j\downarrow} (1 - n_{i\uparrow}) (1 - n_{j\uparrow}) =
+    (1 - n_{i\uparrow}) (1 - n_{j\uparrow}) c^\dagger_{i\downarrow} c_{j\downarrow} =
       c^\dagger_{i\downarrow} c_{j\downarrow}
       - n_{i\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
       - n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
@@ -67,7 +67,7 @@ Hence, we get
  ["+-|n", -β₁, i, j, i],
  ["+-|n", -β₁, i, j, j],
  ["+-|nn", β₁, i, j, i, j],
- ["+-|",   β₁, i, j],
+ ["|+-",   β₁, i, j],
  ["n|+-", -β₁, i, i, j],
  ["n|+-", -β₁, j, i, j],
  ["nn|+-", β₁, i, j, i, j]]

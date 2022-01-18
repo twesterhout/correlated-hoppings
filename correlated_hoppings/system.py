@@ -47,7 +47,7 @@ def unconjugated_hamiltonian(
         ["+-|n", [[-β1, i, j, i] for i, j in edges]],
         ["+-|n", [[-β1, i, j, j] for i, j in edges]],
         ["+-|nn", [[β1, i, j, i, j] for i, j in edges]],
-        ["+-|", [[β1, i, j] for i, j in edges]],
+        ["|+-", [[β1, i, j] for i, j in edges]],
         ["n|+-", [[-β1, i, i, j] for i, j in edges]],
         ["n|+-", [[-β1, j, i, j] for i, j in edges]],
         ["nn|+-", [[β1, i, j, i, j] for i, j in edges]],
@@ -68,9 +68,7 @@ def make_hamiltonian(β1: float, β2: float, γ: float, U: float, edges: List[Tu
     static_part = unconjugated_hamiltonian(β1, β2, γ, edges)
     # NOTE: we need to divide basis.N by 2 because we have spin ↑ and ↓.
     static_part.append(["n|n", [[U, i, i] for i in range(basis.N // 2)]])
-    hamiltonian = quspin.operators.hamiltonian(
-        static_part, [], basis=basis, dtype=np.float64
-    )
+    hamiltonian = quspin.operators.hamiltonian(static_part, [], basis=basis, dtype=np.float64)
     # hamiltonian = hamiltonian + hamiltonian.H
     return hamiltonian
 
@@ -114,11 +112,33 @@ def run_tests():
         ]
     )
 
-    basis = quspin.basis.spinful_fermion_basis_general(3 * 3, Nf=(3, 3))
-    # hamiltonian = normal_hubbard(1, 5, square_3x3().edges, basis)
-    hamiltonian = make_hamiltonian(-1, -1, -1, 5, square_3x3().edges, basis)
-    energy, ground_state = hamiltonian.eigsh(k=1, which="SA")
-    print(energy)
+    number_sites = 2
+    edges = [(0, 1)]
+    # number_sites = 3 * 3
+    # edges = square_3x3().edges
+    J = 1
+    U = 5
+
+    basis = quspin.basis.spinful_fermion_basis_general(number_sites)
+    h1 = make_hamiltonian(-J, -J, -J, U, edges, basis).tocsr()
+    h2 = normal_hubbard(J, U, edges, basis).tocsr()
+    assert h1.shape == h2.shape
+    assert np.all(h1.data == h2.data)
+    assert np.all(h1.indices == h2.indices)
+    assert np.all(h1.indptr == h2.indptr)
+
+    # print(basis)
+    # hamiltonian = 
+    # print(hamiltonian)
+    # energy, ground_state = hamiltonian.eigsh(k=1, which="SA")
+    # print(energy)
+    # return
+    # basis = quspin.basis.spinful_fermion_basis_general(3 * 3, Nf=(3, 3))
+    # hamiltonian = normal_hubbard(J, U, edges, basis)
+    # print(hamiltonian)
+    # hamiltonian = make_hamiltonian(-1, -1, -1, 5, square_3x3().edges, basis)
+    # energy, ground_state = hamiltonian.eigsh(k=1, which="SA")
+    # print(energy)
 
 
 if __name__ == "__main__":
