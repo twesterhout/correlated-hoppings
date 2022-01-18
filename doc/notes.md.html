@@ -1,0 +1,254 @@
+   <meta charset="utf-8" emacsmode="-*- markdown -*-"> <link rel="stylesheet" href="https://casual-effects.com/markdeep/latest/journal.css?">
+
+                        **Journal Template**
+                           Version 1.1
+
+2022-01-18: Started project
+=================================================================
+
+* conda environment file;
+* `example13.py` runs in `correlated_hoppings` environment;
+
+Let's consider the local Hamiltonian of just two fermionic sites $i$ and $j$.
+We distinguish three types of hoppings from $j$ to $i$:
+
+* Between unoccupied and singly-occupied sites: $\_\_ \leftarrow \uparrow\_$
+  and $\_\_ \leftarrow \_\downarrow$.
+  The corresponding coupling is $\beta'_{ij}$.
+* Between singly- and doubly-occupied sites: $\uparrow\_ \leftarrow \uparrow\downarrow$
+  and $\_\downarrow \leftarrow \uparrow\downarrow$.
+  The corresponding coupling is $\beta''_{ij}$.
+* Between two singly-occupied sites of unoccupied and doubly-occupied sites:
+  $\uparrow\_ \leftarrow \_\downarrow$, $\_\downarrow \leftarrow \uparrow\_$,
+  and $\_\_ \leftarrow \uparrow\downarrow$.
+  The corresponding coupling is $\gamma_{ij}$.
+
+$\beta'_{ij}$ term
+-----------------------------------------------------------------
+
+* $\_\_ \leftarrow \uparrow\_$:
+  \begin{equation}
+    c^\dagger_{i\uparrow} c_{j\uparrow} (1 - n_{i\downarrow}) (1 - n_{j\downarrow}) =
+      c^\dagger_{i\uparrow} c_{j\uparrow}
+      - c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow}
+      - c^\dagger_{i\uparrow} c_{j\uparrow} n_{j\downarrow}
+      + c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow} n_{j\downarrow}
+  \end{equation}
+
+* $\_\_ \leftarrow \uparrow\_$:
+  \begin{equation}
+    c^\dagger_{i\downarrow} c_{j\downarrow} (1 - n_{i\uparrow}) (1 - n_{j\uparrow}) =
+      c^\dagger_{i\downarrow} c_{j\downarrow}
+      - n_{i\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+      - n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+      + n_{i\uparrow} n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+  \end{equation}
+
+Hence, we get
+
+~~~~~~~~~~~~~~~~~~~~~~~ python
+[["+-|",   β₁, i, j],
+ ["+-|n", -β₁, i, j, i],
+ ["+-|n", -β₁, i, j, j],
+ ["+-|nn", β₁, i, j, i, j],
+ ["+-|",   β₁, i, j],
+ ["n|+-", -β₁, i, i, j],
+ ["n|+-", -β₁, j, i, j],
+ ["nn|+-", β₁, i, j, i, j]]
+~~~~~~~~~~~~~~~~~~~~~~~
+
+$\beta''_{ij}$ term
+-----------------------------------------------------------------
+
+* $\_\downarrow \leftarrow \uparrow\downarrow$:
+  \begin{equation}
+    c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow} n_{j\downarrow}
+  \end{equation}
+
+* $\uparrow\_ \leftarrow \uparrow\downarrow$:
+  \begin{equation}
+    n_{i\uparrow} n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+  \end{equation}
+
+Hence, we get
+
+~~~~~~~~~~~~~~~~~~~~~~~ python
+[["+-|nn", β₂, i, j, i, j],
+ ["nn|+-", β₂, i, j, i, j]]
+~~~~~~~~~~~~~~~~~~~~~~~
+
+
+$\gamma_{ij}$ term
+-----------------------------------------------------------------
+
+* $\_\downarrow \leftarrow \uparrow\_$:
+  \begin{equation}
+    c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow} (1 - n_{j\downarrow}) =
+      c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow}
+      - c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow} n_{j\downarrow}
+  \end{equation}
+
+* $\uparrow\_ \leftarrow \_\downarrow$:
+  \begin{equation}
+    n_{i\uparrow} (1 - n_{j\uparrow}) c^\dagger_{i\downarrow} c_{j\downarrow} =
+      n_{i\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+      - n_{i\uparrow} n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+  \end{equation}
+
+* $\_\_ \leftarrow \uparrow\downarrow$:
+  \begin{equation}
+    c^\dagger_{i\uparrow} c_{j\uparrow} (1 - n_{i\downarrow}) n_{j\downarrow} +
+    (1 - n_{i\uparrow}) n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow} =
+    c^\dagger_{i\uparrow} c_{j\uparrow} n_{j\downarrow}
+    - c^\dagger_{i\uparrow} c_{j\uparrow} n_{i\downarrow} n_{j\downarrow}
+    + n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+    - n_{i\uparrow} n_{j\uparrow} c^\dagger_{i\downarrow} c_{j\downarrow}
+  \end{equation}
+
+Hence, we get
+
+~~~~~~~~~~~~~~~~~~~~~~~ python
+[["+-|n", γ, i, j, i],
+ ["+-|nn", -γ, i, j, i, j],
+ ["n|+-", γ, i, j, i],
+ ["nn|+-", -γ, i, j, i, j],
+ ["+-|n", γ, i, j, j],
+ ["+-|nn", -γ, i, j, i, j],
+ ["n|+-", γ, j, i, j],
+ ["nn|+-", -γ, i, j, i, j]]
+~~~~~~~~~~~~~~~~~~~~~~~
+
+
+!!! WARNING
+    Do not forget to include complex conjugates for all of the above (i.e. hopping from $i$ to $j$).
+
+
+
+2019-03-01: Updated Results
+=================================================================
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+aliquip ex ea commodo consequat. Duis aute irure dolor in
+reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+pariatur. 
+
+ Maine | Iowa | Colorado 
+-------|------|----------
+   1   |  4   |   10
+  ME   |  IA  |   CO
+ Blue  | Red  | Brown
+[Table [states]: Caption with label.]
+
+
+Code
+---------------------------------------------------------------
+
+Excepteur sint occaecat cupidatat non proident, sunt in
+culpa qui officia deserunt mollit anim id est laborum:
+
+- Incididunt
+- Bonus Unum
+- Quibusdam
+
+```````````````````````````````````````````````
+count_lines () {
+  local f=$1  
+  local m
+  m=`wc -l $f | sed 's/^\([0-9]*\).*$/\1/'`
+  return $m
+}
+```````````````````````````````````````````````
+
+
+2019-02-20: Procedural Synthesis
+===================================================================
+
+At vero eos et accusamus et iusto odio dignissimos ducimus qui
+blanditiis praesentium voluptatum deleniti atque corrupti quos dolores
+et quas molestias excepturi sint occaecati cupiditate non provident,
+similique sunt in culpa qui officia deserunt mollitia animi, id est
+laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita
+distinctio. 
+
+
+2019-02-19: Flow Diagram
+===================================================================
+
+**************************************************************
+*                                                            
+* .---.       .-.        .-.       .-.                       
+* | A +----->| 1 +<---->| 2 |<----+ 4 +------------------.   
+* '---'       '-'        '+'       '-'                    |  
+*                         |         ^                     |  
+*                         v         |                     v  
+*                        .-.      .-+-.        .-.      .-+-.
+*                       | 3 +---->| B |<----->| 5 +---->| C |
+*                        '-'      '---'        '-'      '---'
+**************************************************************
+
+Nam libero tempore, cum `soluta` nobis est eligendi optio
+cumque nihil impedit quo minus id quod maxime placeat facere possimus,
+omnis voluptas assumenda est, omnis dolor repellendus. Temporibus
+autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe
+eveniet ut et voluptates repudiandae sint et molestiae non
+recusandae. 
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+a long preformatted code block a long preformatted code block a long preformatted code block a long preformatted code block a long preformatted code block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+2019-02-15: Example
+==============================================================
+
+Nam libero tempore, cum soluta nobis est eligendi optio
+cumque nihil impedit quo minus id quod maxime placeat facere possimus,
+omnis voluptas assumenda est, omnis dolor repellendus.
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ rust
+fn main() {
+    let x = 5u32;
+
+    let y = {
+        let x_squared = x * x;
+        let x_cube = x_squared * x;
+
+        // This expression will be assigned to `y`
+        x_cube + x_squared + x
+    };
+
+    let z = {
+        // The semicolon suppresses this expression and `()` is assigned to `z`
+        2 * x;
+    };
+
+    println!("x is {:?}", x);
+    println!("y is {:?}", y);
+    println!("z is {:?}", z);
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+<!--
+![`a long code caption a long code caption`](robot.jpg) ![`a long code caption`](robot.jpg) ![`a long code caption`](robot.jpg) ![`a long code caption`](robot.jpg)
+![`a long code caption a long code caption`](robot.jpg) ![`a long code caption`](robot.jpg) ![`a long code caption`](robot.jpg) ![`a long code caption`](robot.jpg)
+-->
+
+[Link to nowhere](nowhere).
+
+
+
+2019-02-01: Started Project
+==============================================================
+
+Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis
+voluptatibus maiores alias consequatur aut perferendis doloribus
+asperiores repellat.
+
+
+ 
+<style class="fallback">body{visibility:hidden}</style><script>markdeepOptions={tocStyle:'long'};</script>
+<!-- Markdeep: --><script src="https://casual-effects.com/markdeep/latest/markdeep.min.js?" charset="utf-8"></script>
