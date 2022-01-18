@@ -3,6 +3,22 @@
                         **Journal Template**
                            Version 1.1
 
+
+2022-01-18: Simple 2-site case
+=================================================================
+
+\begin{equation*}
+H = -J \left( c^\dagger_{0\uparrow} c_{1\uparrow}
+            - c_{0\uparrow} c^\dagger_{1\uparrow}
+            + c^\dagger_{0\downarrow} c_{1\downarrow}
+            - c_{0\downarrow} c^\dagger_{1\downarrow}
+       \right)
+   + U \left( n_{0\uparrow} n_{0\downarrow} + n_{1\uparrow} n_{1\downarrow}
+       \right)
+\end{equation*}
+
+
+
 2022-01-18: Started project
 =================================================================
 
@@ -110,7 +126,7 @@ Hence, we get
 ~~~~~~~~~~~~~~~~~~~~~~~ python
 [["+-|n", γ, i, j, i],
  ["+-|nn", -γ, i, j, i, j],
- ["n|+-", γ, i, j, i],
+ ["n|+-", γ, i, i, j],
  ["nn|+-", -γ, i, j, i, j],
  ["+-|n", γ, i, j, j],
  ["+-|nn", -γ, i, j, i, j],
