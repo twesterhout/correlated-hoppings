@@ -164,8 +164,84 @@ def tune_γ_and_U(lattice):
     # np.savetxt("total_spin_grid.dat", total_spin_grid)
 
 
+def tune_β1_and_U(lattice):
+    γ = 1
+    # β1 = 1
+    β2 = 1
+    number_sites = lattice.number_sites
+    number_fermions = number_sites - 1
+    number_down = number_fermions // 2
+    number_up = number_fermions - number_down
+    basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+
+    β1_grid = np.linspace(0, 1, num=21)
+    U_grid = np.linspace(0, 100, num=41)
+    # total_spin_grid = np.zeros((len(γ_grid), len(U_grid)), dtype=np.float64)
+    table = []
+    filename = "2x2_β1_U.dat"
+    with open(filename, "w") as f:
+        f.write("# β₁\tU\tE\tS\n")
+    for i, β1 in enumerate(β1_grid):
+        with open(filename, "a") as f:
+            if i != 0:
+                f.write("\n")
+        v0 = None
+        for j, U in enumerate(U_grid):
+            h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
+            e, v = h.eigsh(v0=v0, k=1, tol=1e-8, which="SA")
+            S = measure_total_spin(v, basis)
+            # total_spin_grid[i, j] = S
+            v0 = v
+            table.append((γ, U, e, S))
+            with open(filename, "a") as f:
+                f.write("{}\t{}\t{}\t{}\n".format(β1, U, e, S))
+    # np.savetxt("table.dat", np.asarray(table))
+    # np.savetxt("gamma_grid.dat", γ_grid)
+    # np.savetxt("U_grid.dat", U_grid)
+    # np.savetxt("total_spin_grid.dat", total_spin_grid)
+
+
+def tune_β2_and_U(lattice):
+    γ = 1
+    β1 = 1
+    # β2 = 1
+    number_sites = lattice.number_sites
+    number_fermions = number_sites - 1
+    number_down = number_fermions // 2
+    number_up = number_fermions - number_down
+    basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+
+    β2_grid = np.linspace(0, 1, num=21)
+    U_grid = np.linspace(0, 100, num=41)
+    # total_spin_grid = np.zeros((len(γ_grid), len(U_grid)), dtype=np.float64)
+    table = []
+    filename = "2x2_β₂_U.dat"
+    with open(filename, "w") as f:
+        f.write("# β₂\tU\tE\tS\n")
+    for i, β2 in enumerate(β2_grid):
+        with open(filename, "a") as f:
+            if i != 0:
+                f.write("\n")
+        v0 = None
+        for j, U in enumerate(U_grid):
+            h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
+            e, v = h.eigsh(v0=v0, k=1, tol=1e-8, which="SA")
+            S = measure_total_spin(v, basis)
+            # total_spin_grid[i, j] = S
+            v0 = v
+            table.append((γ, U, e[0], S))
+            with open(filename, "a") as f:
+                f.write("{}\t{}\t{}\t{}\n".format(β2, U, e[0], S))
+    # np.savetxt("table.dat", np.asarray(table))
+    # np.savetxt("gamma_grid.dat", γ_grid)
+    # np.savetxt("U_grid.dat", U_grid)
+    # np.savetxt("total_spin_grid.dat", total_spin_grid)
+
+
 def nagaoka_ferromagnetism():
-    tune_γ_and_U(square_2x2())
+    # tune_γ_and_U(square_2x2())
+    # tune_β1_and_U(square_2x2())
+    tune_β2_and_U(square_2x2())
 
 
 def dehollain_2020():
