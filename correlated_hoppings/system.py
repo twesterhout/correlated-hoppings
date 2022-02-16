@@ -416,8 +416,18 @@ def dehollain_2020():
 
 
 def energy_scaling():
+    β1 = 1
+    β2 = 1
+    γ = 1
     for lattice in [square_4(), square_5(), square_8(), square_9(), square_10()]:
-        pass
+        number_fermions = lattice.number_sites
+        number_down = number_fermions // 2
+        number_up = number_fermions - number_down
+        basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+        v0 = None
+        h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
+        e, v = scipy.sparse.linalg.eigsh(h, k=1, tol=1e-7, which="SA")
+        print(lattice.number_sites, e[0])
 
 def run_tests():
     # 0 1 2
@@ -477,7 +487,8 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    superconductivity(square_3x3())
+    energy_scaling()
+    # superconductivity(square_3x3())
     # metal_insulator(square_3x3())
     # nagaoka_ferromagnetism()
     # dehollain_2020()
