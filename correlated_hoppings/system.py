@@ -104,6 +104,10 @@ def square_10() -> SquareLattice:
     # fmt: on
 
 
+def square_16() -> SquareLattice:
+    return SquareLattice(16, simple_square_lattice_edges((4, 4)))
+
+
 def unconjugated_hamiltonian(
     β1: float, β2: float, γ: float, edges: List[Tuple[int, int]]
 ) -> List[Any]:
@@ -313,6 +317,76 @@ def nagaoka_ferromagnetism():
     # tune_β2_and_U(square_2x2())
 
 
+def metal_insulator(lattice):
+    γ = 1
+    β1 = 1
+    β2 = 0.0
+    number_sites = lattice.number_sites
+    global_table = []
+    for number_fermions in [number_sites - 1, number_sites, number_sites + 1]:
+        number_down = number_fermions // 2
+        number_up = number_fermions - number_down
+        basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+        v0 = None
+        table = []
+        for U in np.linspace(1, 21, num=15):
+            h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
+            print("Working on", U, "...")
+            e, v = h.eigsh(v0=v0, k=1, tol=1e-8, which="SA")
+            # S = measure_total_spin(v, basis)
+            # total_spin_grid[i, j] = S
+            v0 = v
+            table.append((U, e[0]))
+            # with open(filename, "a") as f:
+            #     f.write("{}\t{}\t{}\t{}\n".format(β2, U, e[0], S))
+        global_table.append(table)
+
+    gap = []
+    for ((U, emin), (_, e), (_, eplus)) in zip(*global_table):
+        gap.append((U, 0.5 * (emin + eplus - 2 * e)))
+
+    filename = "gap_{}_γ={}_β1={}_β2={}_U.dat".format(number_sites, γ, β1, β2)
+    with open(filename, "w") as f:
+        f.write("# U\tΔ\n")
+        for (U, d) in gap:
+            f.write("{}\t{}\n".format(U, d))
+
+
+def superconductivity(lattice):
+    γ = 1
+    β1 = 0
+    β2 = 1
+    number_sites = lattice.number_sites
+    global_table = []
+    for number_fermions in [number_sites - 2, number_sites - 1, number_sites]:
+        number_down = number_fermions // 2
+        number_up = number_fermions - number_down
+        basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+        v0 = None
+        table = []
+        for U in np.linspace(1, 21, num=15):
+            h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
+            print("Working on", U, "...")
+            e, v = h.eigsh(v0=v0, k=1, tol=1e-8, which="SA")
+            # S = measure_total_spin(v, basis)
+            # total_spin_grid[i, j] = S
+            v0 = v
+            table.append((U, e[0]))
+            # with open(filename, "a") as f:
+            #     f.write("{}\t{}\t{}\t{}\n".format(β2, U, e[0], S))
+        global_table.append(table)
+
+    energies = []
+    for ((U, e2), (_, e1), (_, e0)) in zip(*global_table):
+        energies.append((U, e2, e1, e0))
+
+    filename = "energies_{}_γ={}_β1={}_β2={}_U.dat".format(number_sites, γ, β1, β2)
+    with open(filename, "w") as f:
+        f.write("# U\tEₙ₋₂\tEₙ₋₁\tEₙ\n")
+        for t in energies:
+            f.write("{}\t{}\t{}\t{}\n".format(*t))
+
+
 def dehollain_2020():
     number_sites = 4
     lattice = square_2x2()
@@ -403,6 +477,8 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    nagaoka_ferromagnetism()
+    superconductivity(square_3x3())
+    # metal_insulator(square_3x3())
+    # nagaoka_ferromagnetism()
     # dehollain_2020()
     # run_tests()
