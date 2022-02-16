@@ -124,8 +124,11 @@ def measure_total_spin(v, basis):
         check_pcon=False,
         check_symm=False,
     )
-    r = np.vdot(v, S.dot(v))
-    return 0.5 * (-1 + np.sqrt(1 + r))
+    if v.ndim == 1:
+        v = v.reshape(-1, 1)
+    rs = np.sum(v.conj() * S.dot(v), axis=0)
+    print(rs)
+    return [0.5 * (-1 + np.sqrt(1 + r)) for r in rs]
 
 
 def tune_γ_and_U(lattice):
@@ -135,29 +138,35 @@ def tune_γ_and_U(lattice):
     number_fermions = number_sites - 1
     number_down = number_fermions // 2
     number_up = number_fermions - number_down
-    basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+    basis_2_1 = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+    basis_3_0 = spinful_fermion_basis_general(number_sites, Nf=(number_fermions, 0))
 
-    γ_grid = np.linspace(0, 1, num=51)
-    U_grid = np.linspace(0, 20, num=51)
+    γ_grid = np.linspace(0, 1, num=21)
+    U_grid = np.linspace(0, 20, num=21)
     # total_spin_grid = np.zeros((len(γ_grid), len(U_grid)), dtype=np.float64)
     table = []
-    filename = "table.dat"
+    filename = "2x2_gamma_U.dat"
     with open(filename, "w") as f:
-        f.write("# γ\tU\tE\tS\n")
+        f.write("# γ\tU\tE₀\tS\tE₁\tE₂\tE₃\n")
     for i, γ in enumerate(γ_grid):
         with open(filename, "a") as f:
             if i != 0:
                 f.write("\n")
         v0 = None
         for j, U in enumerate(U_grid):
-            h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
-            e, v = h.eigsh(v0=v0, k=1, tol=1e-8, which="SA")
-            S = measure_total_spin(v, basis)
+            h_2_1 = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis_2_1, check_herm=False)
+            if basis_2_1.Ns < 200:
+                e, v = np.linalg.eigh(h_2_1.todense())
+            else:
+                e, v = h_2_1.eigsh(v0=v0, k=3, tol=1e-8, which="SA")
+            S = measure_total_spin(v, basis_2_1)
+            # print(e, S)
             # total_spin_grid[i, j] = S
-            v0 = v
+            v0 = v[:, 0]
             table.append((γ, U, e, S))
             with open(filename, "a") as f:
-                f.write("{}\t{}\t{}\t{}\n".format(γ, U, e, S))
+                f.write("{}\t{}\t{}\t{}\n".format(γ, U, e[0], S[0], *e[1:]))
+        return
     # np.savetxt("table.dat", np.asarray(table))
     # np.savetxt("gamma_grid.dat", γ_grid)
     # np.savetxt("U_grid.dat", U_grid)
@@ -239,9 +248,9 @@ def tune_β2_and_U(lattice):
 
 
 def nagaoka_ferromagnetism():
-    # tune_γ_and_U(square_2x2())
+    tune_γ_and_U(square_2x2())
     # tune_β1_and_U(square_2x2())
-    tune_β2_and_U(square_2x2())
+    # tune_β2_and_U(square_2x2())
 
 
 def dehollain_2020():
