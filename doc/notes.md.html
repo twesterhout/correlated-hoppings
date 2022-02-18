@@ -1,8 +1,43 @@
-   <meta charset="utf-8" emacsmode="-*- markdown -*-"> <link rel="stylesheet" href="https://casual-effects.com/markdeep/latest/journal.css?">
+<meta charset="utf-8" emacsmode="-*- markdown -*-"> <link rel="stylesheet" href="https://casual-effects.com/markdeep/latest/journal.css?">
 
                         **Journal Template**
                            Version 1.1
 
+2022-02-18:
+=================================================================
+
+Consider the hopping from site $j$ to site $i$:
+
+\begin{equation*}
+\begin{aligned}
+t_{ij} c^\dagger_{i\sigma} c^\mbox{}_{j\sigma}
+  &= t_{ij} \cdot
+    c^\dagger_{i\sigma} \left[ n_{i\uparrow}(1 - n_{i\downarrow})
+                     + (1 - n_{i\uparrow})n_{i\downarrow}
+                     + (1 - n_{i\uparrow})(1 - n_{i\downarrow}) \right]
+    c^\mbox{}_{j\sigma} \left[ n_{j\uparrow}n_{j\downarrow}
+                     + n_{j\uparrow}(1 - n_{j\downarrow})
+                     + (1 - n_{j\uparrow})n_{j\downarrow} \right] \\
+  &= \gamma_{ij}\cdot \left(
+    c^\dagger_{i\sigma} \left[ n_{i\uparrow}(1 - n_{i\downarrow})
+                             + (1 - n_{i\uparrow})n_{i\downarrow} \right]
+    c^\mbox{}_{j\sigma} \left[ n_{j\uparrow}(1 - n_{j\downarrow})
+                             + (1 - n_{j\uparrow})n_{j\downarrow} \right] \right) \\
+  &+ \delta_{ij}\cdot \left(
+    c^\dagger_{i\sigma} (1 - n_{i\uparrow})(1 - n_{i\downarrow})
+    c^\mbox{}_{j\sigma} n_{j\uparrow}n_{j\downarrow} \right) \\
+  &+ \beta'_{ij}\cdot \left(
+    c^\dagger_{i\sigma} \left[ n_{i\uparrow}(1 - n_{i\downarrow})
+                             + (1 - n_{i\uparrow})n_{i\downarrow} \right]
+    c^\mbox{}_{j\sigma} n_{j\uparrow}n_{j\downarrow} \right) \\
+  &+ \beta''_{ij}\cdot \left(
+    c^\dagger_{i\sigma} (1 - n_{i\uparrow})(1 - n_{i\downarrow})
+    c^\mbox{}_{j\sigma} \left[ n_{j\uparrow}n_{j\downarrow}
+                             + n_{j\uparrow}(1 - n_{j\downarrow}) \right] \right)
+\end{aligned}
+\end{equation*}
+
+where right now $t_{ij} = \gamma_{ij} = \delta_{ij} = \beta'_{ij} = \beta''_{ij}$.
 
 2022-01-18: Simple 2-site case
 =================================================================
@@ -30,16 +65,16 @@ We distinguish three types of hoppings from $j$ to $i$:
 
 * Between unoccupied and singly-occupied sites: $\_\_ \leftarrow \uparrow\_$
   and $\_\_ \leftarrow \_\downarrow$.
-  The corresponding coupling is $\beta'_{ij}$.
+  The corresponding coupling is $\beta''_{ij}$.
 * Between singly- and doubly-occupied sites: $\uparrow\_ \leftarrow \uparrow\downarrow$
   and $\_\downarrow \leftarrow \uparrow\downarrow$.
-  The corresponding coupling is $\beta''_{ij}$.
+  The corresponding coupling is $\beta'_{ij}$.
 * Between two singly-occupied sites of unoccupied and doubly-occupied sites:
   $\uparrow\_ \leftarrow \_\downarrow$, $\_\downarrow \leftarrow \uparrow\_$,
   and $\_\_ \leftarrow \uparrow\downarrow$.
   The corresponding coupling is $\gamma_{ij}$.
 
-$\beta'_{ij}$ term
+$\beta''_{ij}$ term
 -----------------------------------------------------------------
 
 * $\_\_ \leftarrow \uparrow\_$:
@@ -63,17 +98,17 @@ $\beta'_{ij}$ term
 Hence, we get
 
 ~~~~~~~~~~~~~~~~~~~~~~~ python
-[["+-|",   β₁, i, j],
- ["+-|n", -β₁, i, j, i],
- ["+-|n", -β₁, i, j, j],
- ["+-|nn", β₁, i, j, i, j],
- ["|+-",   β₁, i, j],
- ["n|+-", -β₁, i, i, j],
- ["n|+-", -β₁, j, i, j],
- ["nn|+-", β₁, i, j, i, j]]
+[["+-|",   β₂, i, j],
+ ["+-|n", -β₂, i, j, i],
+ ["+-|n", -β₂, i, j, j],
+ ["+-|nn", β₂, i, j, i, j],
+ ["|+-",   β₂, i, j],
+ ["n|+-", -β₂, i, i, j],
+ ["n|+-", -β₂, j, i, j],
+ ["nn|+-", β₂, i, j, i, j]]
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-$\beta''_{ij}$ term
+$\beta'_{ij}$ term
 -----------------------------------------------------------------
 
 * $\_\downarrow \leftarrow \uparrow\downarrow$:
@@ -89,8 +124,8 @@ $\beta''_{ij}$ term
 Hence, we get
 
 ~~~~~~~~~~~~~~~~~~~~~~~ python
-[["+-|nn", β₂, i, j, i, j],
- ["nn|+-", β₂, i, j, i, j]]
+[["+-|nn", β₁, i, j, i, j],
+ ["nn|+-", β₁, i, j, i, j]]
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 
