@@ -32,12 +32,42 @@ t_{ij} c^\dagger_{i\sigma} c^\mbox{}_{j\sigma}
     c^\mbox{}_{j\sigma} n_{j\uparrow}n_{j\downarrow} \right) \\
   &+ \beta''_{ij}\cdot \left(
     c^\dagger_{i\sigma} (1 - n_{i\uparrow})(1 - n_{i\downarrow})
-    c^\mbox{}_{j\sigma} \left[ n_{j\uparrow}n_{j\downarrow}
+    c^\mbox{}_{j\sigma} \left[ (1 - n_{j\uparrow})n_{j\downarrow}
                              + n_{j\uparrow}(1 - n_{j\downarrow}) \right] \right)
 \end{aligned}
 \end{equation*}
 
-where right now $t_{ij} = \gamma_{ij} = \delta_{ij} = \beta'_{ij} = \beta''_{ij}$.
+where right now $t_{ij} = \gamma_{ij} = \delta_{ij} = \beta'_{ij} = \beta''_{ij}$
+
+* $\gamma_{ij}$ term:
+
+  \begin{equation*}
+    \sum_{\sigma} c^\dagger_{i\sigma} n_{i} c^\mbox{}_{j\sigma}
+                - c^\dagger_{i\sigma} n_{i} n_{j} c^\mbox{}_{j\sigma}
+  \end{equation*}
+
+* $\delta_{ij}$ term:
+
+  \begin{equation*}
+    \sum_{\sigma} c^\dagger_{i\sigma} n_{i} c^\mbox{}_{j\sigma}
+                - c^\dagger_{i\sigma} n_{i} n_{j} c^\mbox{}_{j\sigma}
+  \end{equation*}
+
+* $\beta'_{ij}$ term:
+
+  \begin{equation*}
+    \sum_{\sigma} c^\dagger_{i\sigma} n_{i} n_{j} c^\mbox{}_{j\sigma}
+  \end{equation*}
+
+* $\beta''_{ij}$ term:
+
+  \begin{equation*}
+    \sum_{\sigma} c^\dagger_{i\sigma} c^\mbox{}_{j\sigma}
+                - c^\dagger_{i\sigma} n_{i} c^\mbox{}_{j\sigma}
+                - c^\dagger_{i\sigma} n_{j} c^\mbox{}_{j\sigma}
+                + c^\dagger_{i\sigma} n_{i} n_{j} c^\mbox{}_{j\sigma}
+  \end{equation*}
+
 
 2022-01-18: Simple 2-site case
 =================================================================
