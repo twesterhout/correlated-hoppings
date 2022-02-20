@@ -114,24 +114,24 @@ def unconjugated_hamiltonian(
     assert are_edges_ordered(edges)
     edges = edges + [(j, i) for i, j in edges]
     return [
-        ["+-|", [[β1, i, j] for i, j in edges]],
-        ["+-|n", [[-β1, i, j, i] for i, j in edges]],
-        ["+-|n", [[-β1, i, j, j] for i, j in edges]],
-        ["+-|nn", [[β1, i, j, i, j] for i, j in edges]],
-        ["|+-", [[β1, i, j] for i, j in edges]],
-        ["n|+-", [[-β1, i, i, j] for i, j in edges]],
-        ["n|+-", [[-β1, j, i, j] for i, j in edges]],
-        ["nn|+-", [[β1, i, j, i, j] for i, j in edges]],
+        ["+-|", [[β2, i, j] for i, j in edges]],
+        ["+-|n", [[-β2, i, j, i] for i, j in edges]],
+        ["+-|n", [[-β2, i, j, j] for i, j in edges]],
         ["+-|nn", [[β2, i, j, i, j] for i, j in edges]],
+        ["|+-", [[β2, i, j] for i, j in edges]],
+        ["n|+-", [[-β2, i, i, j] for i, j in edges]],
+        ["n|+-", [[-β2, j, i, j] for i, j in edges]],
         ["nn|+-", [[β2, i, j, i, j] for i, j in edges]],
+        ["+-|nn", [[β1, i, j, i, j] for i, j in edges]],
+        ["nn|+-", [[β1, i, j, i, j] for i, j in edges]],
         ["+-|n", [[γ, i, j, i] for i, j in edges]],
-        ["+-|nn", [[-γ, i, j, i, j] for i, j in edges]],
+        ["+-|nn", [[-2 * γ, i, j, i, j] for i, j in edges]],
         ["n|+-", [[γ, i, i, j] for i, j in edges]],
-        ["nn|+-", [[-γ, i, j, i, j] for i, j in edges]],
+        ["nn|+-", [[-2 * γ, i, j, i, j] for i, j in edges]],
         ["+-|n", [[γ, i, j, j] for i, j in edges]],
-        ["+-|nn", [[-γ, i, j, i, j] for i, j in edges]],
+        # ["+-|nn", [[-γ, i, j, i, j] for i, j in edges]],
         ["n|+-", [[γ, j, i, j] for i, j in edges]],
-        ["nn|+-", [[-γ, i, j, i, j] for i, j in edges]],
+        # ["nn|+-", [[-γ, i, j, i, j] for i, j in edges]],
     ]
 
 
@@ -433,8 +433,8 @@ def run_tests():
     # 0 1 2
     # 3 4 5
     # 6 7 8
-    print(square_3x3().edges)
-    assert square_3x3().edges == sorted(
+    print(square_9().edges)
+    assert square_9().edges == sorted(
         [
             (0, 1),
             (1, 2),
@@ -487,7 +487,8 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    energy_scaling()
+    run_tests()
+    # energy_scaling()
     # superconductivity(square_3x3())
     # metal_insulator(square_3x3())
     # nagaoka_ferromagnetism()
