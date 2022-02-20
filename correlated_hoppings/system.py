@@ -1,4 +1,8 @@
+import argparse
+import h5py
+from loguru import logger
 import numpy as np
+import os
 import quspin
 from quspin.basis import spinful_fermion_basis_general
 import scipy.sparse.linalg
@@ -56,6 +60,10 @@ def square_5() -> SquareLattice:
     # fmt: on
 
 
+def square_6() -> SquareLattice:
+    return SquareLattice(6, simple_square_lattice_edges((3, 2)))
+
+
 def square_8() -> SquareLattice:
     #          0  1
     #       2  3  4  5
@@ -78,7 +86,17 @@ def square_8() -> SquareLattice:
 
 
 def square_9() -> SquareLattice:
-    return SquareLattice(9, simple_square_lattice_edges((3, 3)))
+    #          0  1  2
+    #          3  4  5
+    #          6  7  8
+    # fmt: off
+    return SquareLattice(9, [(0, 1), (0, 3), (1, 2), (1, 4),
+                             (0, 2), (2, 5), (3, 4), (3, 6),
+                             (4, 5), (4, 7), (3, 5), (5, 8),
+                             (6, 7), (0, 6), (7, 8), (1, 7),
+                             (6, 8), (2, 8)])
+    # fmt: on
+    # return SquareLattice(9, simple_square_lattice_edges((3, 3)))
 
 
 def square_10() -> SquareLattice:
@@ -101,6 +119,39 @@ def square_10() -> SquareLattice:
                               (4, 5), (4, 8), (0, 5), (5, 9),
                               (6, 7), (0, 6), (7, 8), (1, 7),
                               (8, 9), (2, 8), (3, 9), (6, 9)])
+    # fmt: on
+
+
+def square_12() -> SquareLattice:
+    return SquareLattice(12, simple_square_lattice_edges((4, 3)))
+
+
+def square_13() -> SquareLattice:
+    #
+    #             0  1
+    #          2  3  4  5
+    #       6  7  8  9 10
+    #            11 12
+    #
+    #                           0  1
+    #                        2  3  4  5
+    #                     6  7  8  9 10  0  1
+    #                     0  1 11 12  2  3  4  5
+    #                  2  3  4  5  6  7  8  9 10
+    #               6  7  8  9 10  0  1 11 12
+    #                    11 12  2  3  4  5
+    #                        6  7  8  9 10
+    #                             11 12
+    #
+    #
+    # fmt: off
+    return SquareLattice(13, [(0, 1), (0, 3), (1, 11), (1, 4),
+                              (2, 3), (2, 7), (3, 4), (3, 8),
+                              (4, 5), (4, 9), (5, 6), (5, 10),
+                              (6, 7), (0, 6), (7, 8), (1, 7),
+                              (8, 9), (8, 11), (9, 10), (9, 12),
+                              (0, 10), (2, 10), (11, 12), (5, 11),
+                              (2, 12), (6, 12)])
     # fmt: on
 
 
@@ -415,19 +466,77 @@ def dehollain_2020():
     # print(table)
 
 
+def diagonalize_one(
+    β1: float,
+    β2: float,
+    γ: float,
+    U: float,
+    lattice,
+    number_fermions: int,
+    force: bool = False,
+    v0=None,
+):
+    prefix = "data/{}/U={:09.5f}_beta1={:07.5f}_beta2={:07.5f}_gamma={:07.5f}/Nf={}/".format(
+        lattice.number_sites, U, β1, β2, γ, number_fermions
+    )
+    os.makedirs(prefix, exist_ok=True)
+    output = os.path.join(prefix, "eigenvectors.h5")
+    if os.path.exists(output) and not force:
+        logger.info("'{}' already exists, skipping ...", output)
+        return
+    logger.info("Building the basis ...")
+    number_down = number_fermions // 2
+    number_up = number_fermions - number_down
+    basis = spinful_fermion_basis_general(lattice.number_sites, Nf=(number_up, number_down))
+    logger.info("Building the Hamiltonian ...")
+    h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
+    logger.info("Diagonalizing ...")
+    e, v = h.eigsh(h, k=4, tol=1e-8, which="SA")
+    logger.info("Ground state energy: {}", e.tolist())
+    with h5py.File("{}/eigenvectors.h5".format(prefix), "w") as f:
+        g = f.create_group("/hamiltonian")
+        g["eigenvectors"] = v
+        g["eigenvalues"] = e
+        g.attrs["β₁"] = β1
+        g.attrs["β₂"] = β2
+        g.attrs["γ"] = γ
+        g.attrs["U"] = U
+
+
+def diagonalize_command():
+    parser = argparse.ArgumentParser(description="Perform exact diagonalization.")
+    parser.add_argument("-n", type=int, required=True, help="System size")
+    parser.add_argument("-U", type=float, required=True, help="U")
+    parser.add_argument("--beta1", type=float, required=True, help="β₁")
+    parser.add_argument("--beta2", type=float, required=True, help="β₂")
+    parser.add_argument("--gamma", type=float, required=True, help="γ")
+    parser.add_argument("--occupation", type=int, required=True, help="Number of electrons")
+    args = parser.parse_args()
+    lattice = eval("square_{:d}()".format(args.n))
+    diagonalize_one(args.beta1, args.beta2, args.gamma, args.U, lattice, args.occupation)
+
+
 def energy_scaling():
     β1 = 1
     β2 = 1
     γ = 1
-    for lattice in [square_4(), square_5(), square_8(), square_9(), square_10()]:
+    U = 2
+    for lattice in [
+        square_16()
+    ]:  # [square_4(), square_5(), square_6(), square_8(), square_9(), square_10(), square_12(), square_13()]:
         number_fermions = lattice.number_sites
         number_down = number_fermions // 2
         number_up = number_fermions - number_down
-        basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+        logger.info("Building the basis ...")
+        basis = spinful_fermion_basis_general(lattice.number_sites, Nf=(number_up, number_down))
         v0 = None
+        logger.info("Building the Hamiltonian ...")
         h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
-        e, v = scipy.sparse.linalg.eigsh(h, k=1, tol=1e-7, which="SA")
+        logger.info("Diagonalizing ...")
+        e, v = h.eigsh(h, k=1, tol=1e-7, which="SA")
+        logger.info("Done!")
         print(lattice.number_sites, e[0])
+
 
 def run_tests():
     # 0 1 2
@@ -487,7 +596,8 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    energy_scaling()
+    diagonalize_command()
+    # energy_scaling()
     # superconductivity(square_3x3())
     # metal_insulator(square_3x3())
     # nagaoka_ferromagnetism()
