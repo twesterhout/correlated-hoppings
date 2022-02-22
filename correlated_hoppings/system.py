@@ -5,6 +5,7 @@ import numpy as np
 import os
 import quspin
 from quspin.basis import spinful_fermion_basis_general
+import re
 import scipy.sparse.linalg
 from typing import Any, List, Tuple
 
@@ -246,46 +247,297 @@ def measure_total_spin(v, basis):
     return [0.5 * (-1 + np.sqrt(1 + r)) for r in rs]
 
 
-def tune_γ_and_U(lattice):
-    β1 = 1
-    β2 = 1
+def total_spin_squared_fn(basis):
+    indices = [(i, j) for i in range(basis.N // 2) for j in range(basis.N // 2)]
+    static_part = [
+        # S_x S_x
+        # ["--|++", [[-1, i, j, i, j] for i, j in indices]],
+        # ["++|--", [[-1, i, j, i, j] for i, j in indices]],
+        ["-+|+-", [[1, i, j, i, j] for i, j in indices]],
+        ["+-|-+", [[1, i, j, i, j] for i, j in indices]],
+        # S_y S_y
+        # ["--|++", [[1, i, j, i, j] for i, j in indices]],
+        # ["++|--", [[1, i, j, i, j] for i, j in indices]],
+        ["-+|+-", [[1, i, j, i, j] for i, j in indices]],
+        ["+-|-+", [[1, i, j, i, j] for i, j in indices]],
+        # S_z S_z
+        ["nn|", [[1, i, j] for i, j in indices]],
+        ["n|n", [[-1, i, j] for i, j in indices]],
+        ["n|n", [[-1, i, j] for i, j in indices]],
+        ["|nn", [[1, i, j] for i, j in indices]],
+    ]
+    S = quspin.operators.hamiltonian(
+        static_part,
+        [],
+        basis=basis,
+        dtype=np.float64,
+        check_herm=False,
+        check_pcon=False,
+        check_symm=False,
+    )
+
+    def measure(v):
+        if v.ndim == 1:
+            v = v.reshape(-1, 1)
+        return np.sum(v.conj() * S.dot(v), axis=0)
+        # print(rs)
+        # return [0.5 * (-1 + np.sqrt(1 + r)) for r in rs]
+
+    return measure
+
+
+def list_existing(lattice):
+    prefix = "data/{}".format(lattice.number_sites)
+    os.makedirs(prefix, exist_ok=True)
+
+    records = []
+    for f in os.listdir(prefix):
+        m = re.match(r"^U=(.+)_beta1=(.+)_beta2=(.+)_gamma=(.+)$", f)
+        if m is not None:
+            U = float(m.group(1))
+            β1 = float(m.group(2))
+            β2 = float(m.group(3))
+            γ = float(m.group(4))
+            # Let's reconstruct t and F
+            F = γ - β2
+            t = β2 - F
+            assert np.isclose(β1, t + 3 * F)
+            assert np.isclose(β2, t + F)
+            assert np.isclose(γ, t + 2 * F)
+            number_fermions = lattice.number_sites - 1
+            path = os.path.join(prefix, f, "Nf={}".format(number_fermions), "eigenvectors.h5")
+            records.append((F, U, t, path))
+    records = sorted(records)
+    return records
+
+
+def determine_superposition(S, number_fermions):
+    valid_spin_values = np.asarray(list(range(number_fermions, -1, -2))) / 2
+    valid_spin_values = valid_spin_values[::-1]
+    possible = []
+    for s1 in valid_spin_values:
+        for s2 in valid_spin_values:
+            if s1 < s2:
+                a = (S - s2 * (s2 + 1)) / (s1 * (s1 + 1) - s2 * (s2 + 1))
+                if 0 < a and a < 1:
+                    possible.append((a, s1, s2))
+    return possible
+
+
+def analyze_total_spin(lattice):
     number_sites = lattice.number_sites
     number_fermions = number_sites - 1
     number_down = number_fermions // 2
     number_up = number_fermions - number_down
-    basis_2_1 = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
-    basis_3_0 = spinful_fermion_basis_general(number_sites, Nf=(number_fermions, 0))
+    basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+    S2 = total_spin_squared_fn(basis)
+    prefix = "data/{}".format(lattice.number_sites)
+    os.makedirs(prefix, exist_ok=True)
+    output = os.path.join(prefix, "total_spin.dat")
+    with open(output, "w") as f:
+        f.write("# F\tU\tt\tS\n")
+    valid_spin_values = np.asarray(list(range(number_fermions, -1, -2))) / 2
+    valid_spin_values = valid_spin_values[::-1]
+    logger.info("Valid spin values: {}", valid_spin_values)
 
-    γ_grid = np.linspace(0, 1, num=21)
-    U_grid = np.linspace(0, 20, num=21)
-    # total_spin_grid = np.zeros((len(γ_grid), len(U_grid)), dtype=np.float64)
-    table = []
-    filename = "2x2_gamma_U.dat"
-    with open(filename, "w") as f:
-        f.write("# γ\tU\tE₀\tS\tE₁\tE₂\tE₃\n")
-    for i, γ in enumerate(γ_grid):
-        with open(filename, "a") as f:
-            if i != 0:
+    def is_valid_spin(s):
+        return np.sum(np.isclose(valid_spin_values, s, rtol=1e-5, atol=1e-6)) > 0
+
+    prev_F = None
+    prev_U = None
+    for (F, U, t, path) in list_existing(lattice):
+        if prev_F is not None and not np.isclose(F, prev_F, rtol=1e-4, atol=1e-5):
+            with open(output, "a") as f:
                 f.write("\n")
-        v0 = None
-        for j, U in enumerate(U_grid):
-            h_2_1 = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis_2_1, check_herm=False)
-            if basis_2_1.Ns < 200:
-                e, v = np.linalg.eigh(h_2_1.todense())
-            else:
-                e, v = h_2_1.eigsh(v0=v0, k=3, tol=1e-8, which="SA")
-            S = measure_total_spin(v, basis_2_1)
-            # print(e, S)
-            # total_spin_grid[i, j] = S
+        prev_F = F
+        prev_U = U
+        with h5py.File(path, "r") as f:
+            e = f["/hamiltonian/eigenvalues"][:]
+            v = f["/hamiltonian/eigenvectors"][:]
+        if not np.isclose(e[0], e[1], atol=1e-5, rtol=1e-4):
+            r = [0.5 * (-1 + np.sqrt(1 + r)) for r in S2(v)]
+        else:
+            print(e)
+            original = [0.5 * (-1 + np.sqrt(1 + r)) for r in S2(v)]
+            r = []
+            for s in original:
+                if is_valid_spin(s):
+                    r.append(s)
+                else:
+                    print(s)
+                    print(determine_superposition(s, number_fermions))
+                    exit(1)
+                    r.append(s)
+        with open(output, "a") as f:
+            f.write("{}\t{}\t{}\t{}\t{}\n".format(F, U, t, *(r[:2])))
+
+
+def phase_transition_boundaries(lattice, F, U_min=0, U_max=20, t=1, tol=0.1):
+    number_sites = lattice.number_sites
+    number_fermions = number_sites - 1
+    number_down = number_fermions // 2
+    number_up = number_fermions - number_down
+    basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+    S2 = total_spin_squared_fn(basis)
+
+    valid_spin_values = np.asarray(list(range(number_fermions, -1, -2)))
+    valid_spin_values = valid_spin_values[::-1]
+
+    def is_valid_spin(s):
+        return np.sum(np.isclose(valid_spin_values, s, rtol=1e-5, atol=1e-6)) > 0
+
+    v0 = None
+    number_evaluations = 0
+
+    def compute_spin(U):
+        logger.debug("Computing t={}, F={}, U={} ...", t, F, U)
+        nonlocal v0
+        nonlocal number_evaluations
+        L = t + F
+        β1 = L + 2 * F
+        β2 = L
+        γ = L + F
+        number_evaluations += 1
+        e, v = diagonalize_one(β1, β2, γ, U, lattice, lattice.number_sites - 1, v0=v0)
+        v0 = v[:, 0]
+        r = [(-1 + np.sqrt(1 + r)) for r in S2(v)]
+        if is_valid_spin(r[0]):
+            print(r[0])
+            return int(round(r[0]))
+        else:
+            logger.error("Invalid spin: t={}, F={}, U={}, r={}", t, F, U, r)
+            possible = determine_superposition(r[0], number_fermions)
+            print(e, possible)
+            (_, s1, s2) = possible[0]
+            return int(round(2 * s1))
+
+    def analyze_region(U_left, S_left, U_right, S_right):
+        # logger.debug("Analyzing [{}, {}] ...", U_left, U_right)
+        if S_left == S_right:
+            return [(U_left, U_right, S_left)]
+        # assert S_left < S_right
+        U_mid = (U_left + U_right) / 2
+        S_mid = compute_spin(U_mid)
+        # if not (S_left <= S_mid and S_mid <= S_right):
+        #     logger.error(":( U_left={}, S_left={}, U_mid={}, S_mid={}, U_right={}, S_right={}",
+        #             U_left, S_left, U_mid, S_mid, U_right, S_right)
+        if abs(U_left - U_right) < 2 * tol:
+            return [(U_left, U_mid, S_left), (U_mid, U_right, S_right)]
+        left_region = analyze_region(U_left, S_left, U_mid, S_mid)
+        right_region = analyze_region(U_mid, S_mid, U_right, S_right)
+        return left_region + right_region
+
+    S_left = compute_spin(U_min)
+    S_right = compute_spin(U_max)
+    intervals = analyze_region(U_min, S_left, U_max, S_right)
+    intervals = [(U_left, U_right, S / 2) for (U_left, U_right, S) in intervals]
+
+    combined_intervals = []
+    current = None
+    for i in intervals:
+        if current is None:
+            current = i
+            continue
+        if current[2] == i[2]:
+            current = (current[0], i[1], current[2])
+        else:
+            combined_intervals.append(current)
+            current = i
+    combined_intervals.append(current)
+    return combined_intervals, number_evaluations
+
+
+def as_polygon(points, center):
+    points = np.asarray(points)
+    if center is None:
+        center = np.mean(points, axis=0)
+    deltas = points - center
+    deltas = deltas[:, 0] + 1j * deltas[:, 1]
+    angles = np.angle(deltas)
+    order = np.argsort(angles)
+    points = list(points[order])
+    if len(points) > 2:
+        points.append(points[0])
+
+def polygon_to_file(points, output):
+    with open(output, "w") as f:
+        for (x, y) in points:
+            f.write("{}\t{}\n".format(x, y))
+
+
+
+def analyze_spin_phases(lattice, F_count=40, F_min=-1, F_max=0.5, U_min=0, U_max=20, t=1, tol=0.1):
+    prefix = "data/{}".format(lattice.number_sites)
+    os.makedirs(prefix, exist_ok=True)
+    output = os.path.join(prefix, "phases.dat")
+    with open(output, "w") as f:
+        f.write("# F\tU\tS\n")
+    ε = 2e-2
+    number_evaluations = 0
+    records = []
+    for F in np.linspace(F_min, F_max, F_count):
+        intervals, k = phase_transition_boundaries(
+            lattice, F, U_min=U_min, U_max=U_max, t=t, tol=tol
+        )
+        number_evaluations += k
+        with open(output, "a") as f:
+            for (U_left, U_right, S) in intervals:
+                f.write("{}\t{}\t{}\n".format(F, U_left + ε, S))
+                f.write("{}\t{}\t{}\n".format(F, U_right - ε, S))
+        records.append((F, intervals))
+    logger.info("{} evaluations performned to obtain the phase diagram", number_evaluations)
+    return records
+
+
+def tune_F_and_U(lattice):
+    t = 1
+    F_grid = np.linspace(-1, 0.5, num=41)
+    U_grid = np.linspace(0, 20, num=11)
+    number_sites = lattice.number_sites
+    number_fermions = number_sites - 1
+    number_down = number_fermions // 2
+    number_up = number_fermions - number_down
+    basis = spinful_fermion_basis_general(number_sites, Nf=(number_up, number_down))
+    S2 = total_spin_squared_fn(basis)
+    prefix = "data/{}".format(lattice.number_sites)
+    # os.makedirs(prefix, exist_ok=True)
+    # output = os.path.join(prefix, "total_spin.dat")
+    # with open(output, "w") as f:
+    #     f.write("# F\tU\tt\tS\n")
+    v0 = None
+    # valid_spin_values = np.asarray(list(range(number_fermions, -1, -2))) / 2
+    # valid_spin_values = valid_spin_values[::-1]
+    # logger.info("Valid spin values: {}", valid_spin_values)
+
+    # def is_valid_spin(s):
+    #     return np.sum(np.isclose(valid_spin_values, s, rtol=1e-5, atol=1e-6)) > 0
+
+    for i, F in enumerate(F_grid):
+        # with open(output, "a") as f:
+        #     if i != 0:
+        #         f.write("\n")
+        L = t + F
+        β1 = L + 2 * F
+        β2 = L
+        γ = L + F
+        for U in U_grid:
+            e, v = diagonalize_one(β1, β2, γ, U, lattice, lattice.number_sites - 1, v0=v0)
             v0 = v[:, 0]
-            table.append((γ, U, e, S))
-            with open(filename, "a") as f:
-                f.write("{}\t{}\t{}\t{}\n".format(γ, U, e[0], S[0], *e[1:]))
-        return
-    # np.savetxt("table.dat", np.asarray(table))
-    # np.savetxt("gamma_grid.dat", γ_grid)
-    # np.savetxt("U_grid.dat", U_grid)
-    # np.savetxt("total_spin_grid.dat", total_spin_grid)
+            # if not np.isclose(e[0], e[1], atol=1e-5, rtol=1e-4):
+            #     r = [0.5 * (-1 + np.sqrt(1 + r)) for r in S2(v)]
+            # else:
+            #     print(e)
+            #     original = [0.5 * (-1 + np.sqrt(1 + r)) for r in S2(v)]
+            #     r = []
+            #     for s in original:
+            #         if is_valid_spin(s):
+            #             r.append(s)
+            #         else:
+            #             print(s)
+            #             r.append(s)
+            #             # r.append(np.inf)
+            # with open(output, "a") as f:
+            #     f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(F, U, t, *r))
 
 
 def tune_β1_and_U(lattice):
@@ -483,17 +735,20 @@ def diagonalize_one(
     output = os.path.join(prefix, "eigenvectors.h5")
     if os.path.exists(output) and not force:
         logger.info("'{}' already exists, skipping ...", output)
-        return
+        with h5py.File(output, "r") as f:
+            e = f["/hamiltonian/eigenvalues"][:]
+            v = f["/hamiltonian/eigenvectors"][:]
+        return e, v
     logger.info("Building the basis ...")
     number_down = number_fermions // 2
     number_up = number_fermions - number_down
     basis = spinful_fermion_basis_general(lattice.number_sites, Nf=(number_up, number_down))
     logger.info("Building the Hamiltonian ...")
-    h = make_hamiltonian(-β1, -β2, -γ, U, lattice.edges, basis, check_herm=False)
+    h = make_hamiltonian(β1, β2, γ, U, lattice.edges, basis, check_herm=False)
     logger.info("Diagonalizing ...")
-    e, v = h.eigsh(h, k=4, tol=1e-8, which="SA")
+    e, v = h.eigsh(h, v0=v0, k=4, tol=1e-8, which="SA")
     logger.info("Ground state energy: {}", e.tolist())
-    with h5py.File("{}/eigenvectors.h5".format(prefix), "w") as f:
+    with h5py.File(output, "w") as f:
         g = f.create_group("/hamiltonian")
         g["eigenvectors"] = v
         g["eigenvalues"] = e
@@ -501,6 +756,7 @@ def diagonalize_one(
         g.attrs["β₂"] = β2
         g.attrs["γ"] = γ
         g.attrs["U"] = U
+    return e, v
 
 
 def diagonalize_command():
