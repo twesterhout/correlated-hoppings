@@ -402,7 +402,7 @@ def phase_transition_boundaries(lattice, F, U_min=0, U_max=20, t=1, tol=0.1):
         v0 = v[:, 0]
         r = [(-1 + np.sqrt(1 + r)) for r in S2(v)]
         if is_valid_spin(r[0]):
-            print(r[0])
+            logger.info("Total spin is {}", round(r[0]) / 2)
             return int(round(r[0]))
         else:
             logger.error("Invalid spin: t={}, F={}, U={}, r={}", t, F, U, r)
@@ -466,10 +466,10 @@ def polygon_to_file(points, output):
 
 
 
-def analyze_spin_phases(lattice, F_count=40, F_min=-1, F_max=0.5, U_min=0, U_max=20, t=1, tol=0.1):
+def analyze_spin_phases(lattice, F_count=40, F_min=-1, F_max=0.5, U_min=0, U_max=20, t=1, tol=0.1, suffix=""):
     prefix = "data/{}".format(lattice.number_sites)
     os.makedirs(prefix, exist_ok=True)
-    output = os.path.join(prefix, "phases.dat")
+    output = os.path.join(prefix, "phases{}.dat".format(suffix))
     with open(output, "w") as f:
         f.write("# F\tU\tS\n")
     ε = 2e-2
@@ -772,6 +772,15 @@ def diagonalize_command():
     diagonalize_one(args.beta1, args.beta2, args.gamma, args.U, lattice, args.occupation)
 
 
+def analyze_command():
+    parser = argparse.ArgumentParser(description="Build phase diagram.")
+    parser.add_argument("-n", type=int, required=True, help="System size")
+    parser.add_argument("--F", type=float, required=True, help="F")
+    args = parser.parse_args()
+    lattice = eval("square_{:d}()".format(args.n))
+    analyze_spin_phases(lattice, F_count=1, F_min=args.F, suffix="_{}".format(args.F))
+
+
 def energy_scaling():
     β1 = 1
     β2 = 1
@@ -852,7 +861,8 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    diagonalize_command()
+    analyze_command()
+    # diagonalize_command()
     # energy_scaling()
     # superconductivity(square_3x3())
     # metal_insulator(square_3x3())
