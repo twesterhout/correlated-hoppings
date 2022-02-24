@@ -12,3 +12,5 @@ dependencies:
   - omp
   - numpy
   - scipy
+  - loguru
+  - h5py
