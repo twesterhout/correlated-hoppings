@@ -1,2 +1,5 @@
 quspin_example13.py
 slurm-*.out
+assets/nagaoka_*.pdf
+assets/nagaoka_*.png
+total_spin.dat
