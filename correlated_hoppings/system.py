@@ -746,7 +746,8 @@ def diagonalize_one(
     logger.info("Building the Hamiltonian ...")
     h = make_hamiltonian(β1, β2, γ, U, lattice.edges, basis, check_herm=False)
     logger.info("Diagonalizing ...")
-    e, v = h.eigsh(h, v0=v0, k=4, tol=1e-8, which="SA")
+    e, v = h.eigsh(h, v0=v0, k=1, tol=1e-8, which="SA")
+    v = v.reshape(-1, 1)
     logger.info("Ground state energy: {}", e.tolist())
     with h5py.File(output, "w") as f:
         g = f.create_group("/hamiltonian")
