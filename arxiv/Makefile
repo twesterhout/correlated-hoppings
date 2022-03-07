@@ -1,5 +1,5 @@
 all: pdf
-pdf: paper.pdf
+pdf: 01_main.pdf
 
 .PHONY: clean 
 
