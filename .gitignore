@@ -3,3 +3,4 @@ slurm-*.out
 assets/nagaoka_*.pdf
 assets/nagaoka_*.png
 total_spin.dat
+U=*_beta1=*_beta2=*_gamma=*/
