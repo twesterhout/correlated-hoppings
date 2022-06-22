@@ -199,6 +199,59 @@ def make_hamiltonian(
     # hamiltonian = hamiltonian + hamiltonian.H
     return hamiltonian
 
+def make_hamiltonian_v2(t, F, U, edges: List[Tuple[int, int]], basis):
+    static_part = [
+        ["+-|", [[+t, i, j] for i, j in edges]],
+        ["-+|", [[-t, i, j] for i, j in edges]],
+        ["|+-", [[+t, i, j] for i, j in edges]],
+        ["|-+", [[-t, i, j] for i, j in edges]],
+        ["+-|n", [[+F, i, j, i] for i, j in edges]],
+        ["+-|n", [[+F, i, j, j] for i, j in edges]],
+        ["-+|n", [[-F, i, j, i] for i, j in edges]],
+        ["-+|n", [[-F, i, j, j] for i, j in edges]],
+        ["n|+-", [[+F, i, i, j] for i, j in edges]],
+        ["n|+-", [[+F, j, i, j] for i, j in edges]],
+        ["n|-+", [[-F, i, i, j] for i, j in edges]],
+        ["n|-+", [[-F, j, i, j] for i, j in edges]],
+        ["n|n", [[U, i, i] for i in range(basis.N // 2)]],
+    ]
+    return quspin.operators.hamiltonian(static_part, [], basis=basis, dtype=np.float64, check_pcon=False, check_symm=False)
+    # assert are_edges_ordered(edges)
+    # edges = edges + [(j, i) for i, j in edges]
+    # return [
+    #     ["+-|", [[β2, i, j] for i, j in edges]],
+    #     ["+-|n", [[-β2, i, j, i] for i, j in edges]],
+    #     ["+-|n", [[-β2, i, j, j] for i, j in edges]],
+    #     ["+-|nn", [[β2, i, j, i, j] for i, j in edges]],
+    #     ["|+-", [[β2, i, j] for i, j in edges]],
+    #     ["n|+-", [[-β2, i, i, j] for i, j in edges]],
+    #     ["n|+-", [[-β2, j, i, j] for i, j in edges]],
+    #     ["nn|+-", [[β2, i, j, i, j] for i, j in edges]],
+    #     ["+-|nn", [[β1, i, j, i, j] for i, j in edges]],
+    #     ["nn|+-", [[β1, i, j, i, j] for i, j in edges]],
+    #     ["+-|n", [[γ, i, j, i] for i, j in edges]],
+    #     ["+-|nn", [[-2 * γ, i, j, i, j] for i, j in edges]],
+    #     ["n|+-", [[γ, i, i, j] for i, j in edges]],
+    #     ["nn|+-", [[-2 * γ, i, j, i, j] for i, j in edges]],
+    #     ["+-|n", [[γ, i, j, j] for i, j in edges]],
+    #     # ["+-|nn", [[-γ, i, j, i, j] for i, j in edges]],
+    #     ["n|+-", [[γ, j, i, j] for i, j in edges]],
+    #     # ["nn|+-", [[-γ, i, j, i, j] for i, j in edges]],
+    # ]
+
+
+def make_hamiltonian(
+    β1: float, β2: float, γ: float, U: float, edges: List[Tuple[int, int]], basis, **kwargs
+):
+    static_part = unconjugated_hamiltonian(β1, β2, γ, edges)
+    # NOTE: we need to divide basis.N by 2 because we have spin ↑ and ↓.
+    static_part.append(["n|n", [[U, i, i] for i in range(basis.N // 2)]])
+    hamiltonian = quspin.operators.hamiltonian(
+        static_part, [], basis=basis, dtype=np.float64, check_pcon=False, check_symm=False, **kwargs
+    )
+    # hamiltonian = hamiltonian + hamiltonian.H
+    return hamiltonian
+
 
 def normal_hubbard(J, U, edges, basis):
     static_part = [
@@ -372,7 +425,7 @@ def analyze_total_spin(lattice):
             f.write("{}\t{}\t{}\t{}\t{}\n".format(F, U, t, *(r[:2])))
 
 
-def phase_transition_boundaries(lattice, F, U_min=0, U_max=20, t=1, tol=0.1):
+def phase_transition_boundaries(lattice, F, U_min, U_max, t, tol=0.1):
     number_sites = lattice.number_sites
     number_fermions = number_sites - 1
     number_down = number_fermions // 2
@@ -393,12 +446,14 @@ def phase_transition_boundaries(lattice, F, U_min=0, U_max=20, t=1, tol=0.1):
         logger.debug("Computing t={}, F={}, U={} ...", t, F, U)
         nonlocal v0
         nonlocal number_evaluations
-        L = t + F
-        β1 = L + 2 * F
-        β2 = L
-        γ = L + F
+        # NOTE: Fix: L = t + F --> L = t
+        # L = t # + F
+        # β1 = L + 2 * F
+        # β2 = L
+        # γ = L + F
         number_evaluations += 1
-        e, v = diagonalize_one(β1, β2, γ, U, lattice, lattice.number_sites - 1, v0=v0)
+        # e, v = diagonalize_one(β1, β2, γ, U, lattice, lattice.number_sites - 1, v0=None)
+        e, v = diagonalize_one_v2(t, F, U, lattice, lattice.number_sites - 1)
         v0 = v[:, 0]
         r = [(-1 + np.sqrt(1 + r)) for r in S2(v)]
         if is_valid_spin(r[0]):
@@ -413,7 +468,7 @@ def phase_transition_boundaries(lattice, F, U_min=0, U_max=20, t=1, tol=0.1):
 
     def analyze_region(U_left, S_left, U_right, S_right):
         # logger.debug("Analyzing [{}, {}] ...", U_left, U_right)
-        if S_left == S_right:
+        if S_left == S_right and abs(U_left - U_right) < 0.25 * abs(U_max):
             return [(U_left, U_right, S_left)]
         # assert S_left < S_right
         U_mid = (U_left + U_right) / 2
@@ -471,7 +526,7 @@ def analyze_spin_phases(lattice, F_count=40, F_min=-1, F_max=0.5, U_min=0, U_max
     os.makedirs(prefix, exist_ok=True)
     output = os.path.join(prefix, "phases{}.dat".format(suffix))
     with open(output, "w") as f:
-        f.write("# F\tU\tS\n")
+        f.write("# F/t\tU\tS\n")
     ε = 2e-2
     number_evaluations = 0
     records = []
@@ -482,8 +537,8 @@ def analyze_spin_phases(lattice, F_count=40, F_min=-1, F_max=0.5, U_min=0, U_max
         number_evaluations += k
         with open(output, "a") as f:
             for (U_left, U_right, S) in intervals:
-                f.write("{}\t{}\t{}\n".format(F, U_left + ε, S))
-                f.write("{}\t{}\t{}\n".format(F, U_right - ε, S))
+                f.write("{}\t{}\t{}\n".format(F/t, U_left + ε, S))
+                f.write("{}\t{}\t{}\n".format(F/t, U_right - ε, S))
         records.append((F, intervals))
     logger.info("{} evaluations performned to obtain the phase diagram", number_evaluations)
     return records
@@ -746,7 +801,7 @@ def diagonalize_one(
     logger.info("Building the Hamiltonian ...")
     h = make_hamiltonian(β1, β2, γ, U, lattice.edges, basis, check_herm=False)
     logger.info("Diagonalizing ...")
-    e, v = h.eigsh(h, v0=v0, k=1, tol=1e-8, which="SA")
+    e, v = h.eigsh(h, v0=v0, k=1, ncv=40, tol=1e-6, which="SA")
     v = v.reshape(-1, 1)
     logger.info("Ground state energy: {}", e.tolist())
     with h5py.File(output, "w") as f:
@@ -756,6 +811,47 @@ def diagonalize_one(
         g.attrs["β₁"] = β1
         g.attrs["β₂"] = β2
         g.attrs["γ"] = γ
+        g.attrs["U"] = U
+    return e, v
+
+def diagonalize_one_v2(
+    t: float,
+    F: float,
+    U: float,
+    lattice,
+    number_fermions: int,
+    force: bool = False,
+):
+    prefix = "data/{}/U={:09.5f}_t={:07.5f}_F={:07.5f}/Nf={}/".format(
+        lattice.number_sites, U, t, F, number_fermions
+    )
+    os.makedirs(prefix, exist_ok=True)
+    output = os.path.join(prefix, "eigenvectors.h5")
+    if os.path.exists(output) and not force:
+        logger.info("'{}' already exists, skipping ...", output)
+        with h5py.File(output, "r") as f:
+            e = f["/hamiltonian/eigenvalues"][:]
+            v = f["/hamiltonian/eigenvectors"][:]
+        return e, v
+    logger.info("Building the basis ...")
+    number_down = number_fermions // 2
+    number_up = number_fermions - number_down
+    basis = spinful_fermion_basis_general(lattice.number_sites, Nf=(number_up, number_down))
+    logger.info("Building the Hamiltonian ...")
+    h = make_hamiltonian_v2(t, F, U, lattice.edges, basis)
+    logger.info("Diagonalizing ...")
+    e, v = h.eigsh(h, k=1, ncv=40, tol=1e-6, which="SA")
+    v = v.reshape(-1, 1)
+    logger.info("Ground state energy: {}", e.tolist())
+    with h5py.File(output, "w") as f:
+        g = f.create_group("/hamiltonian")
+        g["eigenvectors"] = v
+        g["eigenvalues"] = e
+        g.attrs["β₁"] = t + 2 * F
+        g.attrs["β₂"] = t
+        g.attrs["γ"] = t + F
+        g.attrs["t"] = t
+        g.attrs["F"] = F
         g.attrs["U"] = U
     return e, v
 
@@ -776,7 +872,7 @@ def diagonalize_command():
 def analyze_command():
     parser = argparse.ArgumentParser(description="Build phase diagram.")
     parser.add_argument("-n", type=int, required=True, help="System size")
-    parser.add_argument("--F", type=float, required=True, help="F")
+    parser.add_argument("-F", type=float, required=True, help="F")
     args = parser.parse_args()
     lattice = eval("square_{:d}()".format(args.n))
     analyze_spin_phases(lattice, F_count=1, F_min=args.F, suffix="_{}".format(args.F))
